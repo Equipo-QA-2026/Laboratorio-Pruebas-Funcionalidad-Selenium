@@ -1,6 +1,7 @@
 # LAB-PRUEBAS-SELENIUM
 
-Pruebas automatizadas con Selenium y Python.
+Pruebas funcionales automatizadas con Selenium, Python y pytest.
+Configurado para probar [Automation Exercise](https://automationexercise.com/), pero adaptable a cualquier aplicación web.
 
 ---
 
@@ -60,89 +61,89 @@ cp .env.example .env
 Abrir el archivo `.env` y completar con tus datos:
 
 ```
-BASE_URL=http://localhost:5173/
-USER_VALIDO=admin@tuapp.com
+BASE_URL=https://automationexercise.com/
+USER_VALIDO=tu_email@ejemplo.com
 PASS_VALIDO=tu_contraseña
-USER_INVALIDO=usuario_falso@tuapp.com
+USER_INVALIDO=noexiste@fake.com
 PASS_INVALIDO=contraseña_falsa
+REGISTRO_NOMBRE=Test Usuario
+REGISTRO_EMAIL=nuevo_usuario@test.com
+REGISTRO_PASS=Password123
 ```
 
-| Variable       | Descripción                          |
-|----------------|--------------------------------------|
-| `BASE_URL`     | URL base de la aplicación a probar   |
-| `USER_VALIDO`  | Email de un usuario que existe       |
-| `PASS_VALIDO`  | Contraseña de ese usuario            |
-| `USER_INVALIDO`| Email de un usuario que no existe    |
-| `PASS_INVALIDO`| Contraseña incorrecta                |
+| Variable           | Descripción                                     |
+|--------------------|-------------------------------------------------|
+| `BASE_URL`         | URL base de la aplicación a probar              |
+| `USER_VALIDO`      | Email de un usuario que existe                  |
+| `PASS_VALIDO`      | Contraseña de ese usuario                       |
+| `USER_INVALIDO`    | Email de un usuario que no existe               |
+| `PASS_INVALIDO`    | Contraseña incorrecta                           |
+| `REGISTRO_NOMBRE`  | Nombre para registrar un usuario nuevo          |
+| `REGISTRO_EMAIL`   | Email para el nuevo usuario (referencia)        |
+| `REGISTRO_PASS`    | Contraseña para el nuevo usuario                |
+
+> **Nota:** Para la prueba de registro exitoso se genera un email aleatorio automáticamente para evitar el error de "email ya existe". Las variables `REGISTRO_*` se usan como datos base.
 
 ---
 
 ## Ejecutar las pruebas
 
+### Ejecutar TODAS las pruebas
 ```bash
 python main.py
 ```
 
-Esto va a:
-1. Abrir Chrome automáticamente
-2. Ir a la página de login
-3. Probar primero con credenciales inválidas
-4. Probar después con credenciales válidas
-5. Cerrar el navegador
+### Ejecutar solo pruebas de LOGIN
+```bash
+python main.py login
+```
+
+### Ejecutar solo pruebas de REGISTRO
+```bash
+python main.py registro
+```
+
+### Ejecutar con pytest directamente
+```bash
+# Todas las pruebas con verbose
+pytest tests/ -v -s
+
+# Solo un archivo
+pytest tests/test_login.py -v -s
+
+# Solo un caso específico
+pytest tests/test_login.py::test_login_credenciales_invalidas -v -s
+
+# Generar reporte HTML
+pytest tests/ --html=reportes/reporte.html --self-contained-html -v
+```
+
+### Resultados
+
+- En consola verás el detalle de cada prueba con ✅ o ❌
+- El reporte HTML se genera en `reportes/reporte.html`
+- Abre el reporte en tu navegador para ver un resumen visual
 
 ---
 
-## Qué modificar para agregar una nueva prueba
+## Pruebas incluidas
 
-### Paso 1: Crear el archivo de test
+### 🔐 Test de Login (`tests/test_login.py`)
 
-Crear un archivo nuevo dentro de `tests/`, por ejemplo `test_registro.py`:
+| Caso | Descripción | Validación |
+|------|-------------|------------|
+| `test_login_credenciales_invalidas` | Login con email/contraseña incorrectos | Aparece mensaje "Your email or password is incorrect!" |
+| `test_login_credenciales_validas` | Login con credenciales correctas | Aparece "Logged in as [usuario]" en la navbar |
+| `test_login_campos_vacios` | Click en login sin llenar campos | La página permanece en /login |
 
-```python
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import time
-from config import BASE_URL
+### 📝 Test de Registro (`tests/test_registro.py`)
 
-def registro(driver):
-    wait = WebDriverWait(driver, 10)
-    driver.get(f"{BASE_URL}#/registro")
-    print(f"Página cargada: {driver.title}")
-
-    # Acá van los pasos de la prueba
-    input_nombre = wait.until(EC.presence_of_element_located((By.NAME, "nombre")))
-    input_nombre.send_keys("Juan")
-    # ...
-```
-
-### Paso 2: Importar la función en main.py
-
-Abrir `main.py` y agregar la importación:
-
-```python
-from tests.test_registro import registro
-```
-
-Llamarla dentro de `main()`:
-
-```python
-def main():
-    driver = inicializar_driver()
-    try:
-        registro(driver)    # <-- agregar esto
-        time.sleep(2)
-    except Exception as e:
-        print(f"Ocurrió un error: {e}")
-    finally:
-        driver.quit()
-```
-
-### Paso 3: Ejecutar
-
-```bash
-python main.py
-```
+| Caso | Descripción | Validación |
+|------|-------------|------------|
+| `test_registro_exitoso` | Flujo completo de registro con datos válidos | Aparece "ACCOUNT CREATED!" y se elimina la cuenta |
+| `test_registro_email_existente` | Registro con email ya registrado | Aparece "Email Address already exist!" |
+| `test_registro_campos_vacios` | Click en signup sin datos | La página permanece en /login |
+| `test_seccion_signup_visible` | Verificar que el formulario de signup existe | Campos y botón de signup están visibles |
 
 ---
 
@@ -150,24 +151,67 @@ python main.py
 
 ```
 LAB-PRUEBAS-SELENIUM/
-├── main.py              # Punto de entrada, ejecuta las pruebas
-├── config.py            # Lee las variables del .env
+├── main.py              # Punto de entrada, ejecuta pytest con reportes
+├── config.py            # Lee y valida las variables del .env
+├── conftest.py          # Fixtures de pytest (driver de Chrome compartido)
 ├── .env                 # Variables de entorno (no se sube al repo)
 ├── .env.example         # Plantilla para crear tu .env
 ├── .gitignore           # Archivos que git ignora
 ├── requirements.txt     # Dependencias del proyecto
+├── reportes/            # Reportes HTML generados (no se sube al repo)
 └── tests/
-    └── test_login.py    # Pruebas de login
+    ├── __init__.py      # Marca tests/ como paquete de Python
+    ├── test_login.py    # 3 pruebas de login
+    └── test_registro.py # 4 pruebas de registro
 ```
+
+---
+
+## Cómo adaptar a otra aplicación web
+
+### 1. Cambiar la URL
+En el archivo `.env`, actualiza `BASE_URL` con la URL de tu aplicación.
+
+### 2. Cambiar los selectores
+Cada archivo de test tiene documentados los selectores CSS que usa. Para adaptarlos:
+
+```python
+# ANTES (Automation Exercise usa data-qa):
+input_email = wait.until(
+    EC.presence_of_element_located((By.CSS_SELECTOR, 'input[data-qa="login-email"]'))
+)
+
+# DESPUÉS (tu app puede usar name, id, class, etc.):
+input_email = wait.until(
+    EC.presence_of_element_located((By.NAME, "email"))
+    # o (By.ID, "email-input")
+    # o (By.CSS_SELECTOR, ".login-form input[type='email']")
+    # o (By.XPATH, "//input[@placeholder='Correo electrónico']")
+)
+```
+
+### 3. Cambiar los textos de validación
+Actualiza los textos que se buscan en los asserts según los mensajes de tu aplicación.
+
+---
+
+## Qué hacer si una prueba falla
+
+1. **Revisa la consola** → El mensaje de error indica qué paso falló
+2. **Revisa el reporte HTML** → `reportes/reporte.html` tiene capturas y detalles
+3. **Verifica los selectores** → Inspecciona la página con F12 y confirma que los selectores coinciden
+4. **Verifica el `.env`** → Asegúrate de que las credenciales son correctas
+5. **Verifica Chrome/ChromeDriver** → Deben ser versiones compatibles
 
 ---
 
 ## Archivos importantes
 
-| Archivo        | Para qué sirve                                     |
-|----------------|----------------------------------------------------|
-| `.env`         | Guardar URL y credenciales (nunca subir al repo)   |
-| `.env.example` | Plantilla para que otros sepan qué variables usar  |
-| `config.py`    | Lee el `.env` y expone las variables como constantes|
-| `main.py`      | Punto de entrada, inicializa Chrome y corre los tests|
-| `requirements.txt` | Lista de paquetes que necesita el proyecto     |
+| Archivo             | Para qué sirve                                          |
+|---------------------|---------------------------------------------------------|
+| `.env`              | Guardar URL y credenciales (nunca subir al repo)        |
+| `.env.example`      | Plantilla para que otros sepan qué variables usar       |
+| `config.py`         | Lee el `.env` y valida las variables como constantes    |
+| `conftest.py`       | Configura el navegador Chrome como fixture de pytest    |
+| `main.py`           | Punto de entrada, ejecuta pytest y genera reportes      |
+| `requirements.txt`  | Lista de paquetes que necesita el proyecto               |

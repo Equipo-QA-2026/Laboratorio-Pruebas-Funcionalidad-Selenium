@@ -34,13 +34,13 @@ def test_login_credenciales_invalidas(driver, wait):
     boton = llenar_formulario_login(wait, USER_INVALIDO, PASS_INVALIDO)
     print(f"📧 Email ingresado: {USER_INVALIDO}")
     print("🔑 Contraseña ingresada: ******")
-    boton.click()
+    driver.execute_script("arguments[0].click();", boton)
     print("🖱️  Botón de login clickeado")
 
-    # 3. VALIDACIÓN: Debe aparecer mensaje de error
+    # 3. VALIDACIÓN: Debe aparecer mensaje de error (usamos role="alert" o MuiAlert)
     mensaje_error = wait.until(
         EC.visibility_of_element_located(
-            (By.XPATH, "//p[contains(text(), 'Your email or password is incorrect')]")
+            (By.XPATH, "//*[@role='alert'] | //*[contains(@class, 'MuiAlert-message')]")
         )
     )
     assert mensaje_error.is_displayed(), "❌ No se mostró el mensaje de error"
@@ -66,17 +66,24 @@ def test_login_credenciales_validas(driver, wait):
     boton = llenar_formulario_login(wait, USER_VALIDO, PASS_VALIDO)
     print(f"📧 Email ingresado: {USER_VALIDO}")
     print("🔑 Contraseña ingresada: ******")
+    
     boton.click()
     print("🖱️  Botón de login clickeado")
 
-    # 3. VALIDACIÓN: Debe aparecer "Logged in as [usuario]"
-    logged_in = wait.until(
+    # 3. VALIDACIÓN: Redirección al dashboard y mensaje de bienvenida (página principal)
+    wait.until(EC.url_contains("dashboard"))
+    
+    # Validar que se muestre algún elemento de la página principal
+    bienvenida = wait.until(
         EC.visibility_of_element_located(
-            (By.XPATH, "//a[contains(text(), 'Logged in as')]")
+            (By.XPATH, "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'bienvenido')] | //*[contains(text(), 'Dashboard')]")
         )
     )
-    assert logged_in.is_displayed(), "❌ No se detectó 'Logged in as'"
-    print(f"✅ PRUEBA PASÓ → Usuario logueado: '{logged_in.text.strip()}'")
+    assert bienvenida.is_displayed(), "❌ No se cargó correctamente la página principal"
+    print("✅ PRUEBA PASÓ → Redirección a la página principal exitosa")
+    
+    # Opcional: imprimir la URL actual para depuración
+    print(f"✅ PRUEBA PASÓ → Usuario logueado y página principal visible en: {driver.current_url}")
 
     # Cerrar sesión para no afectar los tests siguientes
     cerrar_sesion(driver)
@@ -96,9 +103,11 @@ def test_login_campos_vacios(driver, wait):
 
     # 2. Asegurar que el campo esté vacío y hacer click en login
     encontrar(wait, "login_email").clear()
-    encontrar_clickable(wait, "login_button").click()
+    # Click en login con campos vacíos
+    boton = encontrar_clickable(wait, "login_button")
+    driver.execute_script("arguments[0].click();", boton)
     print("🖱️  Botón de login clickeado con campos vacíos")
 
-    # 3. VALIDACIÓN: La URL debe seguir siendo /login
-    assert "login" in driver.current_url, "❌ La página navegó fuera de /login"
+    # 3. VALIDACIÓN: La URL debe seguir siendo #/login
+    assert "login" in driver.current_url, "❌ La página navegó fuera de #/login"
     print("✅ PRUEBA PASÓ → El formulario no se envió con campos vacíos")

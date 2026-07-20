@@ -11,6 +11,7 @@ aplicando el concepto de Page Object Model simplificado:
 import random
 import string
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support import expected_conditions as EC
 from conftest import BASE_URL
@@ -23,32 +24,19 @@ from conftest import BASE_URL
 # si un selector cambia en la aplicación, se actualiza solo aquí.
 
 SELECTORES = {
-    # Formulario de Login (en /login)
-    "login_email":      'input[data-qa="login-email"]',
-    "login_password":   'input[data-qa="login-password"]',
-    "login_button":     'button[data-qa="login-button"]',
+    # Formulario de Login (en #/login)
+    "login_email":      'input[name="email"]',
+    "login_password":   'input[name="password"]',
+    "login_button":     'button[type="submit"]',
 
-    # Formulario de Signup — paso 1 (en /login)
-    "signup_name":      'input[data-qa="signup-name"]',
-    "signup_email":     'input[data-qa="signup-email"]',
-    "signup_button":    'button[data-qa="signup-button"]',
-
-    # Formulario de Registro — paso 2 (en /signup)
-    "password":         'input[data-qa="password"]',
-    "first_name":       'input[data-qa="first_name"]',
-    "last_name":        'input[data-qa="last_name"]',
-    "address":          'input[data-qa="address"]',
-    "country":          'select[data-qa="country"]',
-    "state":            'input[data-qa="state"]',
-    "city":             'input[data-qa="city"]',
-    "zipcode":          'input[data-qa="zipcode"]',
-    "mobile_number":    'input[data-qa="mobile_number"]',
-    "create_account":   'button[data-qa="create-account"]',
-
-    # Páginas de resultado
-    "account_created":  '[data-qa="account-created"]',
-    "account_deleted":  '[data-qa="account-deleted"]',
-    "continue_button":  '[data-qa="continue-button"]',
+    # Formulario de Registro (en #/register)
+    "signup_name":       'input[name="first_name"]',
+    "signup_lastname":   'input[name="last_name"]',
+    "signup_email":      'input[name="email"]',
+    "signup_phone":      'input[name="phone_number"]',
+    "signup_password":   'input[name="password"]',
+    "signup_confirm":    'input[name="confirmPassword"]',
+    "signup_button":     'button[type="submit"]',
 }
 
 
@@ -58,12 +46,18 @@ SELECTORES = {
 
 def ir_a_login(driver):
     """Navega a la página de login de la aplicación."""
-    driver.get(f"{BASE_URL}login")
+    driver.get(f"{BASE_URL}#/login")
+
+
+def ir_a_registro(driver):
+    """Navega directamente a la página de registro de la aplicación."""
+    driver.get(f"{BASE_URL}#/register")
 
 
 def cerrar_sesion(driver):
-    """Cierra la sesión del usuario navegando a /logout."""
-    driver.get(f"{BASE_URL}logout")
+    """Cierra la sesión del usuario limpiando el almacenamiento local."""
+    driver.execute_script("localStorage.clear(); sessionStorage.clear();")
+    driver.get(f"{BASE_URL}#/login")
 
 
 # ═══════════════════════════════════════════════════
@@ -121,6 +115,9 @@ def encontrar_visible(wait, nombre_selector):
 def llenar_campo(wait, nombre_selector, texto):
     """Limpia un campo de texto y escribe el valor indicado."""
     campo = encontrar(wait, nombre_selector)
+    # Limpiamos con teclas para asegurar que React detecte el borrado
+    campo.send_keys(Keys.CONTROL + "a")
+    campo.send_keys(Keys.DELETE)
     campo.clear()
     campo.send_keys(texto)
     return campo
@@ -136,42 +133,18 @@ def llenar_formulario_login(wait, email, password):
     return encontrar_clickable(wait, "login_button")
 
 
-def llenar_formulario_signup(wait, nombre, email):
+def llenar_formulario_registro_completo(wait, nombre, apellido, email, telefono, password):
     """
-    Llena la sección inicial de Signup (nombre y email en /login).
-    Retorna el botón de signup listo para hacer click.
+    Llena el formulario completo de registro en #/register.
     """
     llenar_campo(wait, "signup_name", nombre)
+    llenar_campo(wait, "signup_lastname", apellido)
     llenar_campo(wait, "signup_email", email)
+    llenar_campo(wait, "signup_phone", telefono)
+    llenar_campo(wait, "signup_password", password)
+    llenar_campo(wait, "signup_confirm", password)
+    
     return encontrar_clickable(wait, "signup_button")
-
-
-def llenar_formulario_registro_completo(driver, wait, password):
-    """
-    Llena el formulario completo de registro en /signup.
-    Incluye: contraseña, datos personales, país y dirección.
-
-    Usa find_element directo (sin espera) porque la página
-    ya cargó al llegar a este punto del flujo.
-    """
-    # Contraseña
-    encontrar(wait, "password").send_keys(password)
-
-    # Datos personales
-    driver.find_element(By.CSS_SELECTOR, SELECTORES["first_name"]).send_keys("Test")
-    driver.find_element(By.CSS_SELECTOR, SELECTORES["last_name"]).send_keys("Usuario")
-    driver.find_element(By.CSS_SELECTOR, SELECTORES["address"]).send_keys("Calle Principal 123")
-
-    # País (dropdown — se usa Select de Selenium para interactuar con <select>)
-    Select(
-        driver.find_element(By.CSS_SELECTOR, SELECTORES["country"])
-    ).select_by_visible_text("United States")
-
-    # Dirección
-    driver.find_element(By.CSS_SELECTOR, SELECTORES["state"]).send_keys("California")
-    driver.find_element(By.CSS_SELECTOR, SELECTORES["city"]).send_keys("Los Angeles")
-    driver.find_element(By.CSS_SELECTOR, SELECTORES["zipcode"]).send_keys("90001")
-    driver.find_element(By.CSS_SELECTOR, SELECTORES["mobile_number"]).send_keys("1234567890")
 
 
 # ═══════════════════════════════════════════════════
@@ -189,14 +162,8 @@ def generar_email_unico():
 
 def eliminar_cuenta_prueba(driver, wait):
     """
-    Elimina la cuenta de prueba navegando a /delete_account.
-    Se usa para limpiar el entorno después de un registro exitoso.
+    En este caso, la plataforma SmartAdopt no tiene una URL simple de /delete_account
+    como automationexercise. Por lo tanto, no se ejecutará la eliminación aquí.
+    Si la BD se limpia periódicamente, esto es suficiente.
     """
-    driver.get(f"{BASE_URL}delete_account")
-    try:
-        deleted = encontrar_visible(wait, "account_deleted")
-        if deleted.is_displayed():
-            print("🧹 Cuenta de prueba eliminada")
-            encontrar_clickable(wait, "continue_button").click()
-    except Exception:
-        print("⚠️  No se pudo eliminar la cuenta de prueba")
+    pass

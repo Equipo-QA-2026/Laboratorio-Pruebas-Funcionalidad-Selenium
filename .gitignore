@@ -10,8 +10,8 @@ __pycache__/
 venv/
 .venv/
 
-# Reportes generados
-reportes/
+# Evidencias generadas por pytest
+evidencias/
 
 # IDE
 .vscode/

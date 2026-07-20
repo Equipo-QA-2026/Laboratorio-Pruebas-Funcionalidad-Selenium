@@ -1,6 +1,6 @@
 # LAB-PRUEBAS-SELENIUM
 
-Pruebas automatizadas con Selenium y Python.
+Pruebas automatizadas con Selenium y Python, utilizando el framework **Pytest**.
 
 ---
 
@@ -59,7 +59,7 @@ cp .env.example .env
 
 Abrir el archivo `.env` y completar con tus datos:
 
-```
+```env
 BASE_URL=http://localhost:5173/
 USER_VALIDO=admin@tuapp.com
 PASS_VALIDO=tu_contraseña
@@ -79,16 +79,25 @@ PASS_INVALIDO=contraseña_falsa
 
 ## Ejecutar las pruebas
 
+El proyecto está configurado con **Pytest**. Para correr las pruebas y generar las evidencias automáticamente, ejecuta en la raíz del proyecto:
+
 ```bash
-python main.py
+pytest
 ```
 
-Esto va a:
-1. Abrir Chrome automáticamente
-2. Ir a la página de login
-3. Probar primero con credenciales inválidas
-4. Probar después con credenciales válidas
-5. Cerrar el navegador
+### ¿Qué sucederá al ejecutar?
+1. Se abrirá una ventana de Chrome para cada prueba de forma independiente.
+2. `test_login` se ejecutará dos veces: una con datos incorrectos y otra con correctos.
+3. `test_add_pet` se ejecutará haciendo uso de un inicio de sesión previo automatizado en segundo plano.
+4. Al finalizar, si una prueba es exitosa, se guardará una captura de pantalla en `evidencias/exitosas/`.
+5. Si una prueba falla, se guardará una captura de pantalla y el código HTML de la página en `evidencias/fallidas/`.
+6. Se generará un archivo `reporte.html` dentro de `evidencias/` con el resumen de la ejecución.
+
+### Ejecutar una sola prueba
+Si deseas correr un solo archivo, por ejemplo, solo el test de login:
+```bash
+pytest tests/test_login.py
+```
 
 ---
 
@@ -96,7 +105,7 @@ Esto va a:
 
 ### Paso 1: Crear el archivo de test
 
-Crear un archivo nuevo dentro de `tests/`, por ejemplo `test_registro.py`:
+Crear un archivo nuevo dentro de `tests/`, por ejemplo `test_registro.py`. Asegúrate de que el nombre del archivo empiece con `test_`:
 
 ```python
 from selenium.webdriver.common.by import By
@@ -105,7 +114,9 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 from config import BASE_URL
 
-def registro(driver):
+# Si tu prueba requiere login previo, inyecta 'driver_with_login'
+# Si no requiere login, inyecta simplemente 'driver'
+def test_registro(driver):
     wait = WebDriverWait(driver, 10)
     driver.get(f"{BASE_URL}#/registro")
     print(f"Página cargada: {driver.title}")
@@ -116,48 +127,31 @@ def registro(driver):
     # ...
 ```
 
-### Paso 2: Importar la función en main.py
+### Paso 2: Ejecutar
 
-Abrir `main.py` y agregar la importación:
-
-```python
-from tests.test_registro import registro
-```
-
-Llamarla dentro de `main()`:
-
-```python
-def main():
-    driver = inicializar_driver()
-    try:
-        registro(driver)    # <-- agregar esto
-        time.sleep(2)
-    except Exception as e:
-        print(f"Ocurrió un error: {e}")
-    finally:
-        driver.quit()
-```
-
-### Paso 3: Ejecutar
+Pytest detectará tu nuevo archivo automáticamente. Simplemente corre:
 
 ```bash
-python main.py
+pytest
 ```
 
 ---
 
 ## Estructura del proyecto
 
-```
+```text
 LAB-PRUEBAS-SELENIUM/
-├── main.py              # Punto de entrada, ejecuta las pruebas
 ├── config.py            # Lee las variables del .env
 ├── .env                 # Variables de entorno (no se sube al repo)
 ├── .env.example         # Plantilla para crear tu .env
 ├── .gitignore           # Archivos que git ignora
+├── pytest.ini           # Configuración base de Pytest y reportes
 ├── requirements.txt     # Dependencias del proyecto
+├── evidencias/          # (Autogenerada) Aquí se guardan reportes y capturas
 └── tests/
-    └── test_login.py    # Pruebas de login
+    ├── conftest.py      # Fixtures de configuración y captura de evidencias
+    ├── test_login.py    # Pruebas de login (parametrizadas)
+    └── test_add_pet.py  # Prueba de agregar mascota (con login implícito)
 ```
 
 ---
@@ -167,7 +161,7 @@ LAB-PRUEBAS-SELENIUM/
 | Archivo        | Para qué sirve                                     |
 |----------------|----------------------------------------------------|
 | `.env`         | Guardar URL y credenciales (nunca subir al repo)   |
-| `.env.example` | Plantilla para que otros sepan qué variables usar  |
 | `config.py`    | Lee el `.env` y expone las variables como constantes|
-| `main.py`      | Punto de entrada, inicializa Chrome y corre los tests|
+| `pytest.ini`   | Configuración para comandos y reportes de pytest   |
+| `conftest.py`  | Contiene funciones (fixtures) que se ejecutan antes y después de cada prueba|
 | `requirements.txt` | Lista de paquetes que necesita el proyecto     |
